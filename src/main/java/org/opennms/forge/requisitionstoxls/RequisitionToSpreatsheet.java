@@ -1,4 +1,4 @@
-package org.opennms.configcleaner;
+package org.opennms.forge.requisitionstoxls;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,16 +15,18 @@ import jxl.write.WritableCellFormat;
 import jxl.write.WritableSheet;
 import jxl.write.WritableWorkbook;
 import jxl.write.WriteException;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.opennms.netmgt.provision.persist.requisition.Requisition;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionCategory;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionCollection;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionInterface;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionMonitoredService;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RequisitionToSpreatsheet {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RequisitionToSpreatsheet.class);
 
     private Requisition requisition;
     private final String HEADER = "Node_Lable\tIP_Management\tIfType\tAsset_Description\tSvc_Forced\tCat_Location\tCat_OperatingSystem\tCat_Environment\tCat_General";
@@ -34,15 +36,11 @@ public class RequisitionToSpreatsheet {
     private final File requisitionsFile = new File("/tmp/svorcmonitor.xml");
     private final File spreatSheetFile = new File("/tmp/svorcmonitor.xls");
 
-    @Ignore
-    @Test
     public void runRequisition() throws Exception {
         requisition = readRequisitionFromFile(requisitionFile);
         requisition2SpreatSheet(requisition, spreatSheetFile);
     }
 
-    @Ignore
-    @Test
     public void runRequisitions() throws Exception {
         List<Requisition> requisitions = readRequisitonsFromFile(requisitionsFile);
         requisitions2SpreatSheet(requisitions);
