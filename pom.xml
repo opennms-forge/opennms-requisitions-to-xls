@@ -31,12 +31,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>15.0</version>
-        </dependency>
-
-        <dependency>
             <groupId>net.sourceforge.jexcelapi</groupId>
             <artifactId>jxl</artifactId>
             <version>2.6.12</version>
@@ -45,12 +39,6 @@
         <dependency>
             <groupId>org.opennms</groupId>
             <artifactId>opennms-provision-persistence</artifactId>
-            <version>1.12.3</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.opennms</groupId>
-            <artifactId>opennms-config-model</artifactId>
             <version>1.12.3</version>
         </dependency>
 
