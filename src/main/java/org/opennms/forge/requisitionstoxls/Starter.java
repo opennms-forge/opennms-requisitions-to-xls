@@ -43,6 +43,8 @@ public class Starter {
                     LOGGER.error("Input file dose not contain one or many Requisitions", ex);
                 }
                 LOGGER.info("Thanks for computing with OpenNMS");
+            } else {
+                LOGGER.info("Input file can not be read {}", inFile.getAbsolutePath());
             }
         } else {
             LOGGER.info("Please provide the following parameters: -D" + OUTPUT_FILE_PARAMETER + " -D" + INPUT_FILE_PARAMETER);
