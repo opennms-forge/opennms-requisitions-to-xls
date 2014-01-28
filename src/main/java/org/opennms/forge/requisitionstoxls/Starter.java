@@ -13,8 +13,8 @@ public class Starter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Starter.class);
 
-    private final static String OUTPUT_FILE_PARAMETER = "out";
-    private final static String INPUT_FILE_PARAMETER = "in";
+    private final static String OUTPUT_FILE_PARAMETER = "output-xls";
+    private final static String INPUT_FILE_PARAMETER = "input-xml";
     private static File outFile;
     private static File inFile;
 
