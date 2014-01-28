@@ -36,109 +36,140 @@ public class RequisitionToSpreatsheet {
     private final File requisitionsFile = new File("/tmp/svorcmonitor.xml");
     private final File spreatSheetFile = new File("/tmp/svorcmonitor.xls");
 
-    public void runRequisition() throws Exception {
+    public void runRequisition(File inputFile, File outputFile) {
         requisition = readRequisitionFromFile(requisitionFile);
-        requisition2SpreatSheet(requisition, spreatSheetFile);
-    }
-
-    public void runRequisitions() throws Exception {
-        List<Requisition> requisitions = readRequisitonsFromFile(requisitionsFile);
-        requisitions2SpreatSheet(requisitions);
-    }
-
-    public void requisitions2SpreatSheet(List<Requisition> requisitions) throws IOException, WriteException, BiffException {
-        for (Requisition requisition : requisitions) {
+        if (requisition != null) {
             requisition2SpreatSheet(requisition, spreatSheetFile);
+            LOGGER.info("Wrote requisition {} into file {}", requisition.getForeignSource(), outputFile.getAbsolutePath());
+        } else {
+            LOGGER.error("InputFile dose not contain requisition stoping process");
         }
     }
 
-    public List<Requisition> readRequisitonsFromFile(File requisitionsFile) throws JAXBException {
-        JAXBContext jaxbContext = JAXBContext.newInstance(RequisitionCollection.class);
-        Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-        RequisitionCollection requisitions = (RequisitionCollection) jaxbUnmarshaller.unmarshal(requisitionsFile);
+    public void runRequisitions(File inputFile, File outputFile) {
+        List<Requisition> requisitions = readRequisitonsFromFile(inputFile);
+        if (requisitions != null) {
+            requisitions2SpreatSheet(requisitions, outputFile);
+            LOGGER.info("Wrote all {} requisitions into file {}", requisitions.size(), outputFile.getAbsolutePath());
+        } else {
+            LOGGER.error("InputFile dose not contain requisitions stoping process");
+        }
+    }
+
+    public void requisitions2SpreatSheet(List<Requisition> requisitions, File outFile) {
+        for (Requisition requisition : requisitions) {
+            requisition2SpreatSheet(requisition, outFile);
+        }
+    }
+
+    public List<Requisition> readRequisitonsFromFile(File requisitionsFile) {
+        RequisitionCollection requisitions = null;
+        try {
+            JAXBContext jaxbContext = JAXBContext.newInstance(RequisitionCollection.class);
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            requisitions = (RequisitionCollection) jaxbUnmarshaller.unmarshal(requisitionsFile);
+        } catch (JAXBException ex) {
+            LOGGER.error("Reading requisitions from inputFile failed", ex);
+        }
         return requisitions;
     }
 
-    public Requisition readRequisitionFromFile(File requFile) throws JAXBException {
-        JAXBContext jaxbContext = JAXBContext.newInstance(Requisition.class);
-        Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-        requisition = (Requisition) jaxbUnmarshaller.unmarshal(requFile);
+    public Requisition readRequisitionFromFile(File requFile) {
+        Requisition requisition = null;
+        try {
+            JAXBContext jaxbContext = JAXBContext.newInstance(Requisition.class);
+            Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+            requisition = (Requisition) jaxbUnmarshaller.unmarshal(requFile);
+        } catch (JAXBException ex) {
+            LOGGER.error("Reading requisition from inputFile failed", ex);
+        }
         return requisition;
     }
 
-    public void requisition2SpreatSheet(Requisition requisition, File spreatSheetFile) throws IOException, WriteException, BiffException {
+    public void requisition2SpreatSheet(Requisition requisition, File outFile) {
 
-        WritableWorkbook workbook = null;
-        if (spreatSheetFile.exists()) {
-            Workbook existingWorkbook = Workbook.getWorkbook(spreatSheetFile);
-            System.out.println("Adding requisition " + requisition.getForeignSource() + " to file " + spreatSheetFile.getAbsolutePath());
-            workbook = Workbook.createWorkbook(spreatSheetFile, existingWorkbook);
-        } else {
-            System.out.println("Creating requisition " + requisition.getForeignSource() + " in new file " + spreatSheetFile.getAbsolutePath());
-            workbook = Workbook.createWorkbook(spreatSheetFile);
-        }
-        WritableSheet sheet = workbook.createSheet(requisition.getForeignSource(), workbook.getNumberOfSheets());
+        try {
+            WritableWorkbook workbook = null;
+            if (outFile.exists()) {
+                Workbook existingWorkbook = Workbook.getWorkbook(outFile);
+                System.out.println("Adding requisition " + requisition.getForeignSource() + " to file " + outFile.getAbsolutePath());
+                workbook = Workbook.createWorkbook(outFile, existingWorkbook);
 
-        //Write Header into Sheet
-        Integer rowIndex = 0;
-        Integer cellIndex = 0;
-        String[] headerRow = HEADER.split("\t");
-        for (String headerCell : headerRow) {
-            Label lable = new Label(cellIndex, rowIndex, headerCell);
-            sheet.addCell(lable);
-            cellIndex++;
-        }
-        rowIndex++;
-        cellIndex = 0;
+            } else {
+                System.out.println("Creating requisition " + requisition.getForeignSource() + " in new file " + outFile.getAbsolutePath());
+                workbook = Workbook.createWorkbook(outFile);
+            }
+            WritableSheet sheet = workbook.createSheet(requisition.getForeignSource(), workbook.getNumberOfSheets());
 
-        for (RequisitionNode node : requisition.getNodes()) {
-            Boolean nodeAdded = false;
-            Label label = null;
-            for (RequisitionInterface reqInterface : node.getInterfaces()) {
+            //Write Header into Sheet
+            Integer rowIndex = 0;
+            Integer cellIndex = 0;
+            String[] headerRow = HEADER.split("\t");
+            for (String headerCell : headerRow) {
 
-                if (!nodeAdded) {
-                    label = new Label(cellIndex, rowIndex, node.getNodeLabel());
-                    sheet.addCell(label);
-                    nodeAdded = true;
-                } else {
-                    WritableCellFormat additionalInterfaceRow = new WritableCellFormat();
-                    additionalInterfaceRow.setAlignment(Alignment.RIGHT);
-                    additionalInterfaceRow.setBackground(Colour.AQUA);
-                    label = new Label(cellIndex, rowIndex, node.getNodeLabel(), additionalInterfaceRow);
-                    sheet.addCell(label);
-                }
+                Label lable = new Label(cellIndex, rowIndex, headerCell);
+                sheet.addCell(lable);
                 cellIndex++;
+            }
+            rowIndex++;
+            cellIndex = 0;
 
-                label = new Label(cellIndex, rowIndex, reqInterface.getIpAddr());
-                sheet.addCell(label);
-                cellIndex++;
-                label = new Label(cellIndex, rowIndex, reqInterface.getSnmpPrimary().getCode());
-                sheet.addCell(label);
-                cellIndex++;
-                if (node.getAsset(ASSET_DESCRIPTION) != null) {
-                    label = new Label(cellIndex, rowIndex, node.getAsset(ASSET_DESCRIPTION).getValue());
-                    sheet.addCell(label);
-                }
-                cellIndex++;
-                label = new Label(cellIndex, rowIndex, getForcedServices(reqInterface));
-                sheet.addCell(label);
-                cellIndex++;
+            for (RequisitionNode node : requisition.getNodes()) {
+                Boolean nodeAdded = false;
+                Label label = null;
+                for (RequisitionInterface reqInterface : node.getInterfaces()) {
 
-                for (RequisitionCategory category : node.getCategories()) {
-                    label = new Label(cellIndex, rowIndex, category.getName());
+                    if (!nodeAdded) {
+                        label = new Label(cellIndex, rowIndex, node.getNodeLabel());
+                        sheet.addCell(label);
+                        nodeAdded = true;
+                    } else {
+                        WritableCellFormat additionalInterfaceRow = new WritableCellFormat();
+                        additionalInterfaceRow.setAlignment(Alignment.RIGHT);
+                        additionalInterfaceRow.setBackground(Colour.AQUA);
+                        label = new Label(cellIndex, rowIndex, node.getNodeLabel(), additionalInterfaceRow);
+                        sheet.addCell(label);
+                    }
+                    cellIndex++;
+
+                    label = new Label(cellIndex, rowIndex, reqInterface.getIpAddr());
                     sheet.addCell(label);
                     cellIndex++;
+                    label = new Label(cellIndex, rowIndex, reqInterface.getSnmpPrimary().getCode());
+                    sheet.addCell(label);
+                    cellIndex++;
+                    if (node.getAsset(ASSET_DESCRIPTION) != null) {
+                        label = new Label(cellIndex, rowIndex, node.getAsset(ASSET_DESCRIPTION).getValue());
+                        sheet.addCell(label);
+                    }
+                    cellIndex++;
+                    label = new Label(cellIndex, rowIndex, getForcedServices(reqInterface));
+                    sheet.addCell(label);
+                    cellIndex++;
+
+                    for (RequisitionCategory category : node.getCategories()) {
+                        label = new Label(cellIndex, rowIndex, category.getName());
+                        sheet.addCell(label);
+                        cellIndex++;
+                    }
+
+                    cellIndex = 0;
+                    rowIndex++;
                 }
-
                 cellIndex = 0;
-                rowIndex++;
             }
-            cellIndex = 0;
+
+            workbook.write();
+            workbook.close();
+
+        } catch (WriteException writeException) {
+            LOGGER.error("Writing to xls caused a problem", writeException);
+        } catch (BiffException biffException) {
+            LOGGER.error("Working with the xls data caused a problem", biffException);
+        } catch (IOException io) {
+            LOGGER.error("Writing the output file {} caused a problem", outFile.getAbsolutePath(), io);
         }
-
-        workbook.write();
-
-        workbook.close();
+        LOGGER.debug("Wrote output for requisition {} into file {}", requisition.getForeignSource(), outFile.getAbsolutePath());
     }
 
     private String getForcedServices(RequisitionInterface reqInterface) {
