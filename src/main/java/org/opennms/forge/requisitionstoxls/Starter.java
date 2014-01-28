@@ -33,8 +33,10 @@ public class Starter {
                 RequisitionToSpreatsheet requisitionToSpreatsheet = new RequisitionToSpreatsheet();
                 try {
                     if (isInputManyRequisitions(inFile)) {
+                        LOGGER.debug("running multiple requisitions");
                         requisitionToSpreatsheet.runRequisitions(inFile, outFile);
                     } else {
+                        LOGGER.debug("running single requisition");
                         requisitionToSpreatsheet.runRequisition(inFile, outFile);
                     }
                 } catch (Exception ex) {
@@ -54,7 +56,7 @@ public class Starter {
             RequisitionCollection requisitions = (RequisitionCollection) jaxbUnmarshaller.unmarshal(inFile);
             LOGGER.debug("Unmarshalled {} requisitions", requisitions.size());
             return true;
-        } catch (JAXBException ex) {
+        } catch (ClassCastException | JAXBException ex) {
             LOGGER.debug("Input file dose not contain multiple requisitions");
             LOGGER.trace("Input file dose not contain multiple requisitions", ex);
             try {
@@ -63,7 +65,7 @@ public class Starter {
                 Requisition requisition = (Requisition) jaxbUnmarshaller.unmarshal(inFile);
                 LOGGER.debug("Unmarshalled requisition {}", requisition.getForeignSource());
                 return false;
-            } catch (JAXBException ex1) {
+            } catch (ClassCastException | JAXBException ex1) {
                 LOGGER.debug("Input file dose not contain a single requisition");
                 LOGGER.trace("Input file dose not contain a single requisition", ex1);
             }

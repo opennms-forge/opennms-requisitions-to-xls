@@ -32,14 +32,10 @@ public class RequisitionToSpreatsheet {
     private final String HEADER = "Node_Lable\tIP_Management\tIfType\tAsset_Description\tSvc_Forced\tCat_Location\tCat_OperatingSystem\tCat_Environment\tCat_General";
     private final String ASSET_DESCRIPTION = "description";
 
-    private final File requisitionFile = new File("/tmp/Requisition.xml");
-    private final File requisitionsFile = new File("/tmp/svorcmonitor.xml");
-    private final File spreatSheetFile = new File("/tmp/svorcmonitor.xls");
-
     public void runRequisition(File inputFile, File outputFile) {
-        requisition = readRequisitionFromFile(requisitionFile);
+        requisition = readRequisitionFromFile(inputFile);
         if (requisition != null) {
-            requisition2SpreatSheet(requisition, spreatSheetFile);
+            requisition2SpreatSheet(requisition, outputFile);
             LOGGER.info("Wrote requisition {} into file {}", requisition.getForeignSource(), outputFile.getAbsolutePath());
         } else {
             LOGGER.error("InputFile dose not contain requisition stoping process");
