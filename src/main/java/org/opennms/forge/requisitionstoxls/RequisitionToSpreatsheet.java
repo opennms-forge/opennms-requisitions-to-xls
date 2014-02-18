@@ -2,10 +2,14 @@ package org.opennms.forge.requisitionstoxls;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
+import jxl.Cell;
 import jxl.Workbook;
 import jxl.format.Alignment;
 import jxl.format.Colour;
@@ -16,6 +20,7 @@ import jxl.write.WritableSheet;
 import jxl.write.WritableWorkbook;
 import jxl.write.WriteException;
 import org.opennms.netmgt.provision.persist.requisition.Requisition;
+import org.opennms.netmgt.provision.persist.requisition.RequisitionAsset;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionCategory;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionCollection;
 import org.opennms.netmgt.provision.persist.requisition.RequisitionInterface;
@@ -27,14 +32,18 @@ import org.slf4j.LoggerFactory;
 public class RequisitionToSpreatsheet {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequisitionToSpreatsheet.class);
-
-    private Requisition requisition;
-    private final String HEADER = "Node_Lable\tIP_Management\tIfType\tAsset_Description\tSvc_Forced\tCat_Location\tCat_OperatingSystem\tCat_Environment\tCat_General";
-    private final String ASSET_DESCRIPTION = "description";
+    private List<String> headers = new ArrayList<>();
+    private final String ASSET_PREFIX = "Asset_";
+    private final String CATEGORY_PREFIX = "cat_";
+    private final String SERVICE_PREFIX = "svc_";
 
     public void runRequisition(File inputFile, File outputFile) {
-        requisition = readRequisitionFromFile(inputFile);
+        Requisition requisition = readRequisitionFromFile(inputFile);
         if (requisition != null) {
+            headers.add("Node_Label");
+            headers.add("IP_Interface");
+            headers.add("IfType_SNMP");
+            headers.addAll(buildHeader(requisition));
             requisition2SpreatSheet(requisition, outputFile);
             LOGGER.info("Wrote requisition {} into file {}", requisition.getForeignSource(), outputFile.getAbsolutePath());
         } else {
@@ -45,6 +54,10 @@ public class RequisitionToSpreatsheet {
     public void runRequisitions(File inputFile, File outputFile) {
         List<Requisition> requisitions = readRequisitonsFromFile(inputFile);
         if (requisitions != null) {
+            headers.add("Node_Label");
+            headers.add("IP_Interface");
+            headers.add("IfType_SNMP");
+            this.headers.addAll(buildHeader(requisitions));
             requisitions2SpreatSheet(requisitions, outputFile);
             LOGGER.info("Wrote all {} requisitions into file {}", requisitions.size(), outputFile.getAbsolutePath());
         } else {
@@ -100,11 +113,9 @@ public class RequisitionToSpreatsheet {
             //Write Header into Sheet
             Integer rowIndex = 0;
             Integer cellIndex = 0;
-            String[] headerRow = HEADER.split("\t");
-            for (String headerCell : headerRow) {
-
-                Label lable = new Label(cellIndex, rowIndex, headerCell);
-                sheet.addCell(lable);
+            for (String header : headers) {
+                Label label = new Label(cellIndex, rowIndex, header);
+                sheet.addCell(label);
                 cellIndex++;
             }
             rowIndex++;
@@ -114,10 +125,26 @@ public class RequisitionToSpreatsheet {
                 Boolean nodeAdded = false;
                 Label label = null;
                 for (RequisitionInterface reqInterface : node.getInterfaces()) {
-
                     if (!nodeAdded) {
                         label = new Label(cellIndex, rowIndex, node.getNodeLabel());
                         sheet.addCell(label);
+
+                        for (Cell headerCell : sheet.getRow(0)) {
+                            if (headerCell.getContents().startsWith(ASSET_PREFIX)) {
+                                RequisitionAsset asset = node.getAsset(headerCell.getContents().substring(ASSET_PREFIX.length()));
+                                if (asset != null) {
+                                    label = new Label(headerCell.getColumn(), rowIndex, asset.getValue());
+                                    sheet.addCell(label);
+                                }
+                            }
+                            if (headerCell.getContents().startsWith(CATEGORY_PREFIX)) {
+                                RequisitionCategory category = node.getCategory(headerCell.getContents().substring(CATEGORY_PREFIX.length()));
+                                if (category != null) {
+                                    label = new Label(headerCell.getColumn(), rowIndex, category.getName());
+                                    sheet.addCell(label);
+                                }
+                            }
+                        }
                         nodeAdded = true;
                     } else {
                         WritableCellFormat additionalInterfaceRow = new WritableCellFormat();
@@ -127,30 +154,26 @@ public class RequisitionToSpreatsheet {
                         sheet.addCell(label);
                     }
                     cellIndex++;
-
                     label = new Label(cellIndex, rowIndex, reqInterface.getIpAddr());
                     sheet.addCell(label);
                     cellIndex++;
                     label = new Label(cellIndex, rowIndex, reqInterface.getSnmpPrimary().getCode());
                     sheet.addCell(label);
-                    cellIndex++;
-                    if (node.getAsset(ASSET_DESCRIPTION) != null) {
-                        label = new Label(cellIndex, rowIndex, node.getAsset(ASSET_DESCRIPTION).getValue());
-                        sheet.addCell(label);
-                    }
-                    cellIndex++;
-                    label = new Label(cellIndex, rowIndex, getForcedServices(reqInterface));
-                    sheet.addCell(label);
-                    cellIndex++;
 
-                    for (RequisitionCategory category : node.getCategories()) {
-                        label = new Label(cellIndex, rowIndex, category.getName());
-                        sheet.addCell(label);
-                        cellIndex++;
+                    for (Cell headerCell : sheet.getRow(0)) {
+                        if (headerCell.getContents().startsWith(SERVICE_PREFIX)) {
+
+                            for (RequisitionMonitoredService service : reqInterface.getMonitoredServices()) {
+                                if (service.getServiceName().equals(headerCell.getContents().substring(SERVICE_PREFIX.length()))) {
+                                    label = new Label(headerCell.getColumn(), rowIndex, service.getServiceName());
+                                    sheet.addCell(label);
+                                }
+                            }
+                        }
                     }
 
-                    cellIndex = 0;
                     rowIndex++;
+                    cellIndex = 0;
                 }
                 cellIndex = 0;
             }
@@ -159,13 +182,15 @@ public class RequisitionToSpreatsheet {
             workbook.close();
 
         } catch (WriteException writeException) {
-            LOGGER.error("Writing to xls caused a problem", writeException);
+            LOGGER.error("Writing to xls caused a pheaderNamesroblem", writeException);
         } catch (BiffException biffException) {
             LOGGER.error("Working with the xls data caused a problem", biffException);
         } catch (IOException io) {
             LOGGER.error("Writing the output file {} caused a problem", outFile.getAbsolutePath(), io);
         }
-        LOGGER.debug("Wrote output for requisition {} into file {}", requisition.getForeignSource(), outFile.getAbsolutePath());
+
+        LOGGER.debug(
+                "Wrote output for requisition {} into file {}", requisition.getForeignSource(), outFile.getAbsolutePath());
     }
 
     private String getForcedServices(RequisitionInterface reqInterface) {
@@ -178,5 +203,39 @@ public class RequisitionToSpreatsheet {
             return sb.toString().substring(0, sb.toString().length() - 2);
         }
         return sb.toString();
+    }
+
+    private Set<String> addFieldsToHeader(RequisitionNode node) {
+        Set<String> headerNames = new TreeSet<>();
+        for (RequisitionCategory category : node.getCategories()) {
+            headerNames.add(CATEGORY_PREFIX + category.getName());
+        }
+        for (RequisitionAsset asset : node.getAssets()) {
+            headerNames.add(ASSET_PREFIX + asset.getName());
+        }
+        for (RequisitionInterface reqInterface : node.getInterfaces()) {
+            for (RequisitionMonitoredService service : reqInterface.getMonitoredServices()) {
+                headerNames.add(SERVICE_PREFIX + service.getServiceName());
+            }
+        }
+        return headerNames;
+    }
+
+    private Set<String> buildHeader(List<Requisition> requisitions) {
+        Set<String> headerNames = new TreeSet<>();
+        for (Requisition requisition : requisitions) {
+            for (RequisitionNode node : requisition.getNodes()) {
+                headerNames.addAll(addFieldsToHeader(node));
+            }
+        }
+        return headerNames;
+    }
+
+    private Set<String> buildHeader(Requisition requisition) {
+        Set<String> headerNames = new TreeSet<>();
+        for (RequisitionNode node : requisition.getNodes()) {
+            headerNames.addAll(addFieldsToHeader(node));
+        }
+        return headerNames;
     }
 }
