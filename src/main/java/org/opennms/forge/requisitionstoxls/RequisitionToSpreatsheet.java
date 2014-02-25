@@ -42,7 +42,7 @@ public class RequisitionToSpreatsheet {
         if (requisition != null) {
             headers.add("Node_Label");
             headers.add("IP_Interface");
-            headers.add("IfType_SNMP");
+            headers.add("MgmtType_SNMP");
             headers.addAll(buildHeader(requisition));
             requisition2SpreatSheet(requisition, outputFile);
             LOGGER.info("Wrote requisition {} into file {}", requisition.getForeignSource(), outputFile.getAbsolutePath());
@@ -56,7 +56,7 @@ public class RequisitionToSpreatsheet {
         if (requisitions != null) {
             headers.add("Node_Label");
             headers.add("IP_Interface");
-            headers.add("IfType_SNMP");
+            headers.add("MgmtType_SNMP");
             this.headers.addAll(buildHeader(requisitions));
             requisitions2SpreatSheet(requisitions, outputFile);
             LOGGER.info("Wrote all {} requisitions into file {}", requisitions.size(), outputFile.getAbsolutePath());
